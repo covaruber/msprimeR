@@ -1,0 +1,130 @@
+---
+title: "Getting started with msprimeR"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Getting started with msprimeR}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+options(msprimeR.output = "msprime_ts")
+```
+
+msprimeR is an independent native R mirror of the
+[msprime](https://tskit.dev/msprime/) simulator. It calls the original msprime
+C library directly, so it needs no Python installation and produces the same
+simulation tables as upstream msprime for the same parameters and random seed.
+It is not an official upstream msprime release. Please cite the canonical
+msprime paper by Baumdicker et al. (2022), *Efficient ancestry and mutation
+simulation with msprime 1.0*, Genetics 220(3), iyab229,
+<https://doi.org/10.1093/genetics/iyab229>; `citation("msprimeR")` gives the
+full reference.
+
+```{r}
+library(msprimeR)
+```
+
+## Simulating ancestry
+
+`sim_ancestry()` simulates the genealogical history of a sample. Here we
+sample 10 diploid individuals from a population of 10,000 individuals:
+
+```{r}
+ts <- sim_ancestry(samples = 10, population_size = 1e4, sequence_length = 1e5,
+                   recombination_rate = 1e-8, random_seed = 1)
+ts
+```
+
+Mutations are added with `sim_mutations()`:
+
+```{r}
+mts <- sim_mutations(ts, rate = 1e-8, random_seed = 2)
+mts$num_sites
+head(ts_table(mts, "sites"))
+```
+
+## Tree sequence objects and tskitR
+
+Results are tree sequences. When the
+[tskitR](https://tskit.dev) package is installed, simulation functions return
+`tskitR::TreeSequence` objects by default, which give access to the full tskit
+toolkit (trees, statistics, genotypes, ...). This vignette sets
+`options(msprimeR.output = "msprime_ts")`, so lightweight `msprime_ts` objects
+are returned instead. These can be converted with `as_tskit()`, and written to
+(or read from) the standard `.trees` format used by tskitR, tsdateR and tsinferR:
+
+```{r}
+f <- tempfile(fileext = ".trees")
+ts_dump(mts, f)
+ts_load(f)$num_mutations
+```
+
+The tables follow the tskit data model, with zero-based IDs:
+
+```{r}
+head(ts_table(ts, "nodes"))
+```
+
+## Demography
+
+Demographic models are described with `Demography` objects. Populations are
+referred to by name or by zero-based ID.
+
+```{r}
+demography <- Demography$new()
+demography$add_population(name = "A", initial_size = 1e4)
+demography$add_population(name = "B", initial_size = 5e3)
+demography$add_population(name = "C", initial_size = 1e3)
+demography$set_symmetric_migration_rate(c("A", "B"), 1e-4)
+demography$add_population_split(time = 1000, derived = c("A", "B"), ancestral = "C")
+demography
+```
+
+The `DemographyDebugger` describes the epochs of the model and computes
+quantities such as coalescence rates:
+
+```{r}
+debug <- demography$debug()
+debug$epoch_start_time
+debug$mean_coalescence_time(c(A = 2))
+```
+
+Samples are taken from named populations:
+
+```{r}
+ts <- sim_ancestry(samples = c(A = 2, B = 3), demography = demography,
+                   sequence_length = 1e4, recombination_rate = 1e-8, random_seed = 3)
+table(ts_table(ts, "nodes")$population[ts_table(ts, "nodes")$flags == 1])
+```
+
+Models can also be created from species trees (`Demography$from_species_tree()`)
+and from [demes](https://popsim-consortium.github.io/demes-spec-docs/) YAML
+models (`Demography$from_demes()`), and exported with `demography$to_demes()`.
+
+## Ancestry and mutation models
+
+Several ancestry models are available, and can be combined in sequence:
+
+```{r}
+ts <- sim_ancestry(5, population_size = 100, sequence_length = 1e4,
+                   recombination_rate = 1e-6,
+                   model = list(DiscreteTimeWrightFisher(duration = 20),
+                                StandardCoalescent()),
+                   random_seed = 4)
+ts$num_trees
+```
+
+and many mutation models:
+
+```{r}
+mts <- sim_mutations(ts, rate = 1e-5, model = HKY(kappa = 2), random_seed = 5)
+table(ts_table(mts, "sites")$ancestral_state)
+```
+
+## Reproducibility
+
+Every simulation function takes a `random_seed`. If it is not given, a seed is
+drawn from R's random number generator, so `set.seed()` makes analyses
+reproducible.

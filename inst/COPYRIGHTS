@@ -1,0 +1,28 @@
+msprimeR bundles third-party C libraries:
+
+* msprime C library (src/lib/)
+  Copyright (C) 2015-2025 University of Oxford.
+  License: GPL (>= 3).
+  https://github.com/tskit-dev/msprime
+
+* tskit C library (src/tskit/, src/tskit.h)
+  Copyright (c) 2019-2025 Tskit Developers; (c) 2015-2018 University of Oxford.
+  License: MIT (see inst/licenses/tskit-MIT.txt; individual source files also
+  retain the upstream MIT notice).
+  https://github.com/tskit-dev/tskit
+
+* kastore (src/kastore/)
+  Copyright (c) 2018 tskit-dev.
+  License: MIT (see inst/licenses/kastore-MIT.txt).
+  https://github.com/tskit-dev/kastore
+
+* avl.c/avl.h (src/lib/): libavl,
+  Copyright (C) 1998 Michael H. Buselli, (C) 2000-2002 Wessel Dankers.
+  License: GNU LGPL version 2.1 or any later version (full text in
+  inst/licenses/LGPL-2.1.txt).
+
+The vendored sources are unmodified except for the small changes applied by
+tools/sync_c_sources.sh: internal assertion failures are reported through R's
+error mechanism instead of writing to stderr and calling abort(), the tskit
+debug stream defaults to NULL, and a void function in avl.c no longer returns
+an expression.

@@ -1,0 +1,50 @@
+Package: msprimeR
+Type: Package
+Title: Coalescent and Population Genetic Simulations with 'msprime'
+Version: 0.1.0
+Authors@R: c(
+    person("Giovanny", "Covarrubias-Pazaran", role = c("aut", "cre"),
+           email = "cova_ruber@live.com.mx",
+           comment = c(ORCID = "0000-0002-7194-3837")),
+    person("Tskit Developers", role = c("aut", "cph"),
+           comment = "Authors of the bundled 'msprime', 'tskit' and 'kastore' C libraries"),
+    person("University of Oxford", role = "cph",
+           comment = "Copyright holder of the bundled 'msprime' C library"),
+    person("Michael H. Buselli", role = "cph", comment = "Author of the bundled 'libavl'"),
+    person("Wessel Dankers", role = "cph", comment = "Author of the bundled 'libavl'"))
+Description: An independent native R mirror of the 'msprime' simulator
+    <https://tskit.dev/msprime/> (not an official upstream release), for
+    simulating ancestral histories
+    (coalescent with recombination, gene conversion, multiple merger
+    coalescents, selective sweeps, discrete-time Wright-Fisher and fixed
+    pedigree models) under flexible demographic models, and for simulating
+    mutations under a variety of mutation models, as described in
+    Baumdicker et al. (2022) <doi:10.1093/genetics/iyab229>. The package
+    bundles the 'msprime' and 'tskit' C libraries and does not depend on
+    Python. Results are tree sequences that can be written to the standard
+    '.trees' format and used directly with the 'tskitR' package.
+Maintainer: Giovanny Covarrubias-Pazaran <cova_ruber@live.com.mx>
+License: GPL (>= 3)
+Copyright: See inst/COPYRIGHTS for the bundled C libraries.
+URL: https://tskit.dev/msprime
+Encoding: UTF-8
+Depends: R (>= 4.0.0)
+Imports:
+    R6,
+    jsonlite,
+    stats,
+    utils
+Suggests:
+    tskitR,
+    tsdateR,
+    tsinferR,
+    yaml,
+    knitr,
+    rmarkdown,
+    testthat (>= 3.0.0)
+VignetteBuilder: knitr
+SystemRequirements: GNU Scientific Library (GSL >= 2.0)
+Config/testthat/edition: 3
+Roxygen: list(r6 = FALSE)
+RoxygenNote: 7.3.2
+NeedsCompilation: yes

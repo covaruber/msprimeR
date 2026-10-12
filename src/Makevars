@@ -1,0 +1,12 @@
+PKG_CPPFLAGS = -I. -Itskit -Ikastore -Ilib -I/cvmfs/biogrid-software.rnd.seeds.basf.net/tools/eb/x86_64/generic/software/GSL/2.7-GCC-12.2.0/include
+PKG_LIBS = -L/cvmfs/biogrid-software.rnd.seeds.basf.net/tools/eb/x86_64/generic/software/GSL/2.7-GCC-12.2.0/lib -lgsl -lgslcblas -lm
+
+TSKIT_OBJECTS = tskit/core.o tskit/tables.o tskit/trees.o tskit/genotypes.o \
+	tskit/stats.o tskit/convert.o tskit/haplotype_matching.o kastore/kastore.o
+
+MSP_OBJECTS = lib/msprime.o lib/mutgen.o lib/likelihood.o lib/rate_map.o \
+	lib/fenwick.o lib/avl.o lib/object_heap.o lib/util.o
+
+GLUE_OBJECTS = r_init.o r_tables.o r_simulator.o r_mutations.o r_likelihood.o
+
+OBJECTS = $(TSKIT_OBJECTS) $(MSP_OBJECTS) $(GLUE_OBJECTS)

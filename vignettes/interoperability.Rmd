@@ -1,0 +1,120 @@
+---
+title: "Tree sequence interoperability"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Tree sequence interoperability}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+options(msprimeR.output = "msprime_ts")
+```
+
+msprimeR simulates and mutates genealogies. It does not replace the broader
+`tskitR`, `tsdateR`, or `tsinferR` toolkits. The shared interface is the
+standard `.trees` file format: msprimeR writes the native tskit format and the
+other packages can load it into their own native R object classes. Use each
+package's own `ts_load()` and `ts_dump()` functions for these handoffs.
+
+msprimeR is an independent R mirror, not an official upstream msprime release.
+For work using these simulations, cite the canonical msprime paper by
+Baumdicker et al. (2022), *Efficient ancestry and mutation simulation with
+msprime 1.0*, Genetics 220(3), iyab229,
+<https://doi.org/10.1093/genetics/iyab229>. See `citation("msprimeR")`.
+
+## Produce a tree sequence
+
+```{r}
+library(msprimeR)
+ts <- sim_ancestry(
+  samples = 12, population_size = 1000, sequence_length = 1000,
+  recombination_rate = 1e-6, random_seed = 4
+)
+mts <- sim_mutations(ts, rate = 1e-5, random_seed = 5)
+mts$num_nodes
+mts$num_sites
+```
+
+## Inspect and analyze with tskitR
+
+When tskitR is installed, msprimeR's default output is already a tskitR
+`TreeSequence`. For code that needs to work without tskitR, set
+`options(msprimeR.output = "msprime_ts")`; convert the lightweight result with
+`as_tskit()` when the analysis package is available.
+
+```{r, eval = requireNamespace("tskitR", quietly = TRUE)}
+tsk <- as_tskit(mts)
+tsk$num_trees
+tsk$diversity()
+```
+
+A `.trees` file can also be loaded explicitly:
+
+```{r}
+path <- tempfile(fileext = ".trees")
+ts_dump(mts, path)
+```
+
+```{r, eval = requireNamespace("tskitR", quietly = TRUE)}
+tsk_from_file <- tskitR::tskit_load(path)
+tsk_from_file$num_sites
+```
+
+## Date ancestral nodes with tsdateR
+
+`tsdateR` expects its own `tsdate_treeseq` wrapper, so load the shared file and
+pass that object to `date_ts()`. Here the same per-generation mutation rate used
+to generate mutations is supplied to the dating method.
+
+```{r, eval = requireNamespace("tsdateR", quietly = TRUE)}
+date_input <- tsdateR::ts_load(path)
+dated <- tsdateR::date_ts(date_input, mutation_rate = 1e-5, allow_unary = TRUE)
+tsdateR::ts_summary(dated)
+```
+
+The dated sequence remains in `.trees` format and can be opened by tskitR:
+
+```{r, eval = requireNamespace("tsdateR", quietly = TRUE) &&
+           requireNamespace("tskitR", quietly = TRUE)}
+dated_path <- tempfile(fileext = ".trees")
+tsdateR::ts_dump(dated, dated_path)
+ts_dated <- tskitR::tskit_load(dated_path)
+ts_dated$num_nodes
+```
+
+## Read a tree sequence with tsinferR
+
+`tsinferR` can read, inspect, and write an existing tree sequence. Its inference
+pipeline has a different role: it infers tree sequences from genotype sources
+and configurations; it does not use an msprimeR tree sequence as its inference
+input.
+
+```{r, eval = requireNamespace("tsinferR", quietly = TRUE)}
+inferred_wrapper <- tsinferR::ts_load(path)
+tsinferR::ts_info(inferred_wrapper)
+```
+
+Round-trip through tsinferR and load the result with msprimeR:
+
+```{r, eval = requireNamespace("tsinferR", quietly = TRUE)}
+roundtrip_path <- tempfile(fileext = ".trees")
+ts_infer <- tsinferR::ts_load(path)
+tsinferR::ts_dump(ts_infer, roundtrip_path)
+msprimeR::ts_load(roundtrip_path)$num_nodes
+```
+
+## File handoff summary
+
+- **tskitR** provides tree traversal, statistics, variants, genotypes, and table
+  manipulation. msprimeR can also convert directly to a tskitR `TreeSequence`
+  with `as_tskit()`.
+- **tsdateR** estimates ancestral node ages from mutations and a mutation rate.
+  Its `date_ts()` input must be loaded with `tsdateR::ts_load()`.
+- **tsinferR** infers tree sequences from genotype data; its `tsinfer_ts`
+  wrapper can read and write the same `.trees` files.
+
+The `.trees` format is the durable cross-package boundary. C pointers inside
+R6 tree-sequence objects are package-specific and should not be passed between
+packages or saved with `saveRDS()`.

@@ -1,0 +1,58 @@
+#!/bin/sh
+# Locate the GNU Scientific Library and write src/Makevars.
+
+GSL_CFLAGS=""
+GSL_LIBS=""
+
+if [ -n "${GSL_HOME}" ]; then
+  GSL_CFLAGS="-I${GSL_HOME}/include"
+  GSL_LIBS="-L${GSL_HOME}/lib -lgsl -lgslcblas -lm"
+elif command -v gsl-config >/dev/null 2>&1; then
+  GSL_CFLAGS=`gsl-config --cflags`
+  GSL_LIBS=`gsl-config --libs`
+elif command -v pkg-config >/dev/null 2>&1 && pkg-config --exists gsl; then
+  GSL_CFLAGS=`pkg-config --cflags gsl`
+  GSL_LIBS=`pkg-config --libs gsl`
+else
+  GSL_LIBS="-lgsl -lgslcblas -lm"
+fi
+
+: ${R_HOME=`R RHOME`}
+if test -z "${R_HOME}"; then
+  echo "could not determine R_HOME"
+  exit 1
+fi
+CC=`"${R_HOME}/bin/R" CMD config CC`
+CPPFLAGS=`"${R_HOME}/bin/R" CMD config CPPFLAGS`
+CFLAGS=`"${R_HOME}/bin/R" CMD config CFLAGS`
+LDFLAGS=`"${R_HOME}/bin/R" CMD config LDFLAGS`
+
+cat > conftest.c <<EOF
+#include <gsl/gsl_rng.h>
+#include <gsl/gsl_version.h>
+#if GSL_MAJOR_VERSION < 2
+#error "GSL >= 2.0 is required"
+#endif
+int main(void) { gsl_rng *r = gsl_rng_alloc(gsl_rng_default); gsl_rng_free(r); return 0; }
+EOF
+if ${CC} ${CPPFLAGS} ${GSL_CFLAGS} ${CFLAGS} conftest.c -o conftest ${LDFLAGS} ${GSL_LIBS} >/dev/null 2>&1; then
+  echo "Found GSL: cflags='${GSL_CFLAGS}' libs='${GSL_LIBS}'"
+else
+  rm -f conftest conftest.c
+  cat <<EOM
+------------------------- GSL NOT FOUND ---------------------------------
+msprimeR requires the GNU Scientific Library (GSL >= 2.0).
+  Debian/Ubuntu: sudo apt-get install libgsl-dev
+  Fedora/RHEL:   sudo dnf install gsl-devel
+  macOS:         brew install gsl
+If GSL is installed in a non-standard location, set GSL_HOME or make
+'gsl-config' available on the PATH.
+-------------------------------------------------------------------------
+EOM
+  exit 1
+fi
+rm -f conftest conftest.c
+
+sed -e "s|@GSL_CFLAGS@|${GSL_CFLAGS}|" -e "s|@GSL_LIBS@|${GSL_LIBS}|" \
+  src/Makevars.in > src/Makevars
+exit 0

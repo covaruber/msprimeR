@@ -1,0 +1,41 @@
+citHeader("msprimeR is an independent R mirror of msprime. Please cite the canonical msprime publication below when reporting results produced with this package. The second entry identifies the R mirror version used.")
+
+c(
+  bibentry(
+    bibtype = "Article",
+    key = "baumdicker2022efficient",
+    title = "Efficient ancestry and mutation simulation with msprime 1.0",
+    author = personList(
+      person("Franz", "Baumdicker"), person("Gertjan", "Bisschop"),
+      person("Daniel", "Goldstein"), person("Graham", "Gower"),
+      person("Aaron P", "Ragsdale"), person("Georgia", "Tsambos"),
+      person("Sha", "Zhu"), person("Bjarki", "Eldon"),
+      person("E Castedo", "Ellerman"), person("Jared G", "Galloway"),
+      person("Ariella L", "Gladstein"), person("Gregor", "Gorjanc"),
+      person("Bing", "Guo"), person("Ben", "Jeffery"),
+      person("Warren W", "Kretzschumar"), person("Konrad", "Lohse"),
+      person("Michael", "Matschiner"), person("Dominic", "Nelson"),
+      person("Nathaniel S", "Pope"), person("Consuelo D", "Quinto-Cortes"),
+      person("Murillo F", "Rodrigues"), person("Kumar", "Saunack"),
+      person("Thibaut", "Sellinger"), person("Kevin", "Thornton"),
+      person("Hugo", "van Kemenade"), person("Anthony W", "Wohns"),
+      person("Yan", "Wong"), person("Simon", "Gravel"),
+      person("Andrew D", "Kern"), person("Jere", "Koskela"),
+      person("Peter L", "Ralph"), person("Jerome", "Kelleher")
+    ),
+    journal = "Genetics",
+    volume = "220",
+    number = "3",
+    pages = "iyab229",
+    year = "2022",
+    doi = "10.1093/genetics/iyab229"
+  ),
+  bibentry(
+    bibtype = "Manual",
+    key = "msprimeR",
+    title = "msprimeR: Native R Mirror of msprime",
+    author = person("Giovanny", "Covarrubias-Pazaran", role = "aut"),
+    year = "2026",
+    note = "R package version 0.1.0"
+  )
+)

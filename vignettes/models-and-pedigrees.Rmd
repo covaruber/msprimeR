@@ -1,0 +1,130 @@
+---
+title: "Models, demographic histories, and pedigrees"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Models, demographic histories, and pedigrees}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+options(msprimeR.output = "msprime_ts")
+```
+
+This vignette demonstrates msprimeR's demographic, ancestry-model, rate-map,
+mutation-model, replicate and pedigree interfaces. msprimeR is an independent
+R mirror of upstream msprime, not an official upstream release. Please cite
+the canonical msprime publication; `citation("msprimeR")` provides the full
+reference.
+
+## Structured demography
+
+Population IDs are zero-based; population names can be used instead. Migration
+rates are backward-time rates, matching the coalescent lineage direction.
+
+```{r}
+demography <- Demography$new()
+demography$add_population(name = "north", initial_size = 5000, growth_rate = 0.002)
+demography$add_population(name = "south", initial_size = 3500)
+demography$add_population(name = "ancestor", initial_size = 10000)
+demography$set_symmetric_migration_rate(c("north", "south"), 1e-4)
+demography$add_population_parameters_change(
+  time = 200, population = "south", initial_size = 2500, growth_rate = 0)
+demography$add_population_split(
+  time = 1000, derived = c("north", "south"), ancestral = "ancestor")
+demography$sort_events()
+demography
+```
+
+Use the debugger to inspect epochs and lineage locations:
+
+```{r}
+debugger <- demography$debug()
+debugger$epoch_start_time
+debugger$population_size_history
+debugger$possible_lineage_locations(samples = c("north", "south"))
+```
+
+A demes model can be resolved from an R list and converted to a Demography:
+
+```{r, eval = requireNamespace("yaml", quietly = TRUE)}
+demes_yaml <- "
+time_units: generations
+demes:
+  - name: ancestor
+    epochs: [{end_time: 1000, start_size: 10000}]
+  - name: north
+    ancestors: [ancestor]
+    epochs: [{start_size: 5000}]
+  - name: south
+    ancestors: [ancestor]
+    epochs: [{start_size: 3500}]
+"
+graph <- resolve_demes(yaml::yaml.load(demes_yaml))
+deme_model <- Demography$from_demes(graph)
+names(deme_model)
+```
+
+## Rate maps and ancestry models
+
+A RateMap describes changing rates along the sequence. NaN intervals denote
+unknown map regions; missing flanks are trimmed from the returned sequence.
+
+```{r}
+recombination <- RateMap$new(
+  position = c(0, 2e5, 5e5, 1e6),
+  rate = c(1e-8, 3e-8, 1e-8))
+recombination$mean_rate
+```
+
+An ancestry simulation may run a sequence of models:
+
+```{r}
+ts <- sim_ancestry(
+  samples = list(SampleSet(4, "north"), SampleSet(4, "south")),
+  demography = demography,
+  sequence_length = 1e6,
+  recombination_rate = recombination,
+  model = list(DiscreteTimeWrightFisher(duration = 20), StandardCoalescent()),
+  random_seed = 21)
+ts
+```
+
+Other models include Hudson's coalescent (default), SMC, SMC', SMC(k), Beta
+and Dirac multiple-merger coalescents, selective sweeps, and fixed pedigrees.
+
+## Mutation models and replicates
+
+```{r}
+mts <- sim_mutations(ts, rate = 1e-8, model = HKY(kappa = 2), random_seed = 22)
+table(ts_table(mts, "sites")$ancestral_state)
+replicates <- sim_ancestry(
+  samples = 6, population_size = 1000, sequence_length = 1e5,
+  recombination_rate = 1e-8, random_seed = 23, num_replicates = 3)
+vapply(replicates, function(x) x$num_trees, numeric(1))
+```
+
+## Fixed pedigrees
+
+`PedigreeBuilder` constructs the individual table and paired sample nodes
+required by the fixed-pedigree model. Parent references are zero-based and may
+refer to individuals added later.
+
+```{r}
+pedigree <- PedigreeBuilder$new()
+founder_a <- pedigree$add_individual(time = 2)
+founder_b <- pedigree$add_individual(time = 2)
+pedigree$add_individual(time = 1, parents = c(founder_a, founder_b))
+pedigree$add_individual(time = 0, parents = c(2, 2))
+pedigree_tables <- pedigree$finalise(sequence_length = 1000)
+fixed <- sim_ancestry(
+  initial_state = pedigree_tables, model = FixedPedigree(),
+  recombination_rate = 1e-4, random_seed = 24)
+fixed
+```
+
+Pedigrees can be exchanged as text with `write_pedigree()` and
+`parse_pedigree()`. Tree traversal and population-genetic statistics are
+provided by tskitR; ancestral node dating is provided by tsdateR. See the
+`interoperability` vignette for the `.trees` handoffs.
